@@ -1,3 +1,29 @@
+# Build output
+/build/
+**/build/
 docker/*.war
+
+# Local credentials / secrets
 google_creds.json
 webhook
+
+# Local editor / OS files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Java / Gradle caches
+.gradle/
+**/.gradle/
+
+# Logs
+*.log
+
+# Docker local artifacts
+*.tar
+
+# Temporary files
+*.tmp

@@ -28,7 +28,10 @@ java {
 }
 
 war {
-    archiveFileName = 'tap##' + project.version + '.war'
+    // Tomcat maps the deployed app context from the WAR filename. Using
+    // `tap.war` keeps the service available under `/tap`, which matches the
+    // expected local URL and the docs in README.md.
+    archiveFileName = 'tap.war'
 }
 
 configurations {

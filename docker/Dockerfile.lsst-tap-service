@@ -14,8 +14,9 @@ RUN chmod +x /usr/local/bin/start.sh
 ADD docker/cadc-tomcat-start-readonly /usr/bin/cadc-tomcat-start-readonly
 RUN chmod +x /usr/bin/cadc-tomcat-start-readonly
 
-# Create a directory for WAR files
-RUN mkdir -p /opt/tomcat-wars
-ADD docker/*.war /opt/tomcat-wars/
+# Deploy the built WAR into Tomcat's webapps directory so the service is
+# exposed under the expected /tap context path.
+RUN mkdir -p /var/lib/tomcat/webapps
+ADD docker/*.war /var/lib/tomcat/webapps/
 
 ENTRYPOINT ["/usr/local/bin/start.sh"]
