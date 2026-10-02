@@ -10,9 +10,41 @@ services:
     depends_on:
       - lsst-tap-service
 
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    networks:
+      - tap-network
+    environment:
+      KAFKA_NODE_ID: "1"
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_DEFAULT_REPLICATION_FACTOR: "1"
+      KAFKA_MIN_INSYNC_REPLICAS: "1"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"
+      KAFKA_LOG_RETENTION_HOURS: "168"
+      KAFKA_LOG_DIRS: "/tmp/kraft-combined-logs"
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+      start_period: 20s
+
   lsst-tap-service:
     image: lsstdax/lsst-tap-service:dev
     depends_on:
+      kafka:
+        condition: service_healthy
       mock-qserv:
         condition: service_healthy
       tap-schema-db:
@@ -25,7 +57,16 @@ services:
     networks:
       - tap-network
     environment:
-      BACKEND: "pg"
+      # Keep PostgreSQL sync mode as the default local path.
+      # To enable async Kafka-based queries, switch BACKEND to "qserv"
+      # and keep the Kafka service above running.
+      BACKEND: "qserv"
+      DATABASE: "dp02"
+      KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+      KAFKA_GROUP_ID: "tap-local"
+      KAFKA_QUERY_TOPIC: "lsst.tap.job-run"
+      KAFKA_STATUS_TOPIC: "lsst.tap.job-status"
+      KAFKA_DELETE_TOPIC: "lsst.tap.job-delete"
       CATALINA_OPTS: >-
         -Dqservuser.username=qsmaster
         -Dqservuser.password=

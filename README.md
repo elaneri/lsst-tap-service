@@ -84,6 +84,29 @@ https://github.com/lsst-sqre/charts/tree/master/cadc-tap
 
 ## Configuration
 
+### Async Kafka-backed queries
+
+The local stack now includes a Kafka broker for asynchronous TAP job execution. The app is
+configured to pass the Kafka connection settings through environment variables, but the default
+backend remains `pg` so the standard sync workflow stays stable.
+
+To enable Kafka-backed async queries locally, change the app environment in `docker/docker-compose.yml`:
+
+```yaml
+  lsst-tap-service:
+    environment:
+      BACKEND: "qserv"
+      DATABASE: "dp02"
+      KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+      KAFKA_GROUP_ID: "tap-local"
+      KAFKA_QUERY_TOPIC: "lsst.tap.job-run"
+      KAFKA_STATUS_TOPIC: "lsst.tap.job-status"
+      KAFKA_DELETE_TOPIC: "lsst.tap.job-delete"
+```
+
+With that change, the service uses `KafkaContextListener` and the Kafka-backed job executor for
+async queries. The broker itself is provided by the `kafka` container defined in the same Compose file.
+
 ### BigQuery Backend
 
 When using the BigQuery backend, the following system properties must be configured:

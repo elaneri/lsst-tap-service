@@ -49,23 +49,27 @@ public class KafkaContextListener implements ServletContextListener {
             String statusTopic = getConfigValue("KAFKA_STATUS_TOPIC", "kafka.status.topic", "lsst.tap.job-status");
             String deleteTopic = getConfigValue("KAFKA_DELETE_TOPIC", "kafka.delete.topic", "lsst.tap.job-delete");
 
-            String truststorePath = System.getProperty("kafka.ssl.truststore");
-            String keystorePath = System.getProperty("kafka.ssl.keystore");
-            String keyPath = System.getProperty("kafka.ssl.key");
-            
-            if (truststorePath == null || keystorePath == null || keyPath == null) {
-                throw new IllegalStateException("SSL certificates are required but not configured. Missing system properties: kafka.ssl.truststore.location, kafka.ssl.keystore.location, or kafka.ssl.key.location");
+            String truststorePath = getConfigValue("KAFKA_SSL_TRUSTSTORE", "kafka.ssl.truststore.location", null);
+            String keystorePath = getConfigValue("KAFKA_SSL_KEYSTORE", "kafka.ssl.keystore.location", null);
+            String keyPath = getConfigValue("KAFKA_SSL_KEY", "kafka.ssl.key.location", null);
+
+            boolean sslConfigured = truststorePath != null && keystorePath != null && keyPath != null;
+            boolean sslPartiallyConfigured = (truststorePath != null) || (keystorePath != null) || (keyPath != null);
+            if (sslPartiallyConfigured && !sslConfigured) {
+                throw new IllegalStateException(
+                        "Incomplete Kafka SSL configuration. Set all three: KAFKA_SSL_TRUSTSTORE, KAFKA_SSL_KEYSTORE, KAFKA_SSL_KEY");
             }
 
             log.debug("Creating Kafka configuration with bootstrap server: " + bootstrapServer +
                     ", query topic: " + queryTopic +
                     ", status topic: " + statusTopic +
-                    ", delete topic: " + deleteTopic);
+                    ", delete topic: " + deleteTopic +
+                    ", sslEnabled=" + sslConfigured);
 
             kafkaConfig = new KafkaConfig(bootstrapServer, queryTopic, statusTopic, deleteTopic,
-                    truststorePath,
-                    keystorePath,
-                    keyPath);
+                    sslConfigured ? truststorePath : null,
+                    sslConfigured ? keystorePath : null,
+                    sslConfigured ? keyPath : null);
 
             log.debug("Initializing job event producer...");
             createJobEventService = new CreateJobEvent(kafkaConfig);
